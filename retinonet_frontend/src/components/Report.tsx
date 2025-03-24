@@ -21,7 +21,7 @@ const Report = ({ file, predictions }: { file: File | null; predictions: any }) 
     formData.append("predictions", JSON.stringify(Object.values(predictions)));
 
     try {
-      const response = await fetch("http://localhost:8000/generate_report/", {
+      const response = await fetch("https://ai-retinonet.onrender.com/generate_report/", {
         method: "POST",
         body: formData,
       });

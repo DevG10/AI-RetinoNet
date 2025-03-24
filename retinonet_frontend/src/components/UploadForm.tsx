@@ -79,7 +79,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ setPredictions, setFile }) => {
         });
       }, 200);
 
-      const response = await axios.post("http://localhost:8000/predict/", formData, {
+      const response = await axios.post("https://ai-retinonet.onrender.com/predict/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

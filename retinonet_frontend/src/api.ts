@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8000"; // Change if backend is hosted
+const API_BASE_URL = "https://ai-retinonet.onrender.com"; // Change if backend is hosted
 
 export const uploadImage = async (file: File) => {
   const formData = new FormData();

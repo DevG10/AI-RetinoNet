@@ -35,7 +35,7 @@ const EmailForm = ({ file, predictions }: { file: File | null; predictions: any 
     formData.append("email", email);
 
     try {
-      const response = await fetch("http://localhost:8000/send_report/", {
+      const response = await fetch("https://ai-retinonet.onrender.com/send_report/", {
         method: "POST",
         body: formData,
       });
