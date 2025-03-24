@@ -10,3 +10,4 @@ python-dotenv
 reportlab
 tensorflow
 uvicorn
+python-multipart
