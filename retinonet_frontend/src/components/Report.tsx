@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileDown, Loader2, FileText, Download, Check, ChevronDown } from "lucide-react";
+import { Loader2, FileText, Download, Check, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 

@@ -40,7 +40,7 @@ const EmailForm = ({ file, predictions }: { file: File | null; predictions: any 
         body: formData,
       });
 
-      const data = await response.json();
+      await response.json();
       
       toast.success("Email sent successfully!");
       setSuccess(true);

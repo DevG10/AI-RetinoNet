@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle, AlertTriangle, Activity, BarChart3 } from "lucide-react";
+import { AlertCircle, CheckCircle, AlertTriangle, BarChart3 } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface PredictionsProps {

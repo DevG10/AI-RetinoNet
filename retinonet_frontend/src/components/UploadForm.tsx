@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
-import { Eye, Upload, X, Image as ImageIcon, Loader2, FileUp, Sparkles } from "lucide-react";
+import { Eye, Upload, X, Image as ImageIcon, Loader2} from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
