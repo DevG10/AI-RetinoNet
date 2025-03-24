@@ -66,7 +66,6 @@ async def generate_report(file: UploadFile = File(...), predictions: str = Form(
     """Generate a PDF report for given predictions and image."""
     try:
         predictions = np.array(eval(predictions))  # Convert string to NumPy array
-        print(predictions)
         image_path = f"temp_{file.filename}"
         
         # Save temporary image
