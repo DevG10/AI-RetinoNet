@@ -134,14 +134,14 @@ env/
 venv/
 ENV/
 env.bak/
-venv.bak/
+venv.
 # Spyder project settings
 .spyderproject
 .spyproject
 retinonet-backend/model
 # Rope project settings
 .ropeproject
-
+D:\Computer Programming\Python\CV Projects\AI-RetinoNet\retinonet_backend\model
 # mkdocs documentation
 /site
 

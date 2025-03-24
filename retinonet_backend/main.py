@@ -8,6 +8,9 @@ from report import generate_pdf_report, crop_to_retinal_area, is_printed_image
 from email_service import send_email_report
 from PIL import Image
 import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 app = FastAPI()
 
