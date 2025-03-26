@@ -56,6 +56,8 @@ def generate_pdf_report(predictions, image_path):
     try:
         logo_path = "assets/logo.png"
         if logo_path and os.path.exists(logo_path):
+            print("LOGO PATH EXISTS")
+            print(f"image dimensions: {Image.open(logo_path).size}")
             logo = RLImage(logo_path, width=120, height=60)
         else:
             logging.error("Logo file not found!")
