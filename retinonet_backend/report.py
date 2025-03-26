@@ -7,6 +7,8 @@ import numpy as np
 import dns.resolver
 import cv2
 import mediapipe as mp
+import logging
+import traceback
 from datetime import datetime
 from dotenv import load_dotenv
 from PIL import Image
@@ -31,156 +33,198 @@ CLASS_NAMES = ["Bilateral Retinoblastoma", "Left Eye Retinoblastoma", "Right Eye
 
 def generate_pdf_report(predictions, image_path):
     """Generate a visually enhanced PDF report with logo and professional styling."""
-    print("INSIDE generate_pdf_report")
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
-    styles = getSampleStyleSheet()
-    report_content = []
-    
-    # Custom Styles
-    title_style = styles['Title']
-    title_style.textColor = colors.HexColor('#1E40AF')
-    title_style.fontSize = 24
-    title_style.leading = 30
-
-    subtitle_style = ParagraphStyle(
-        'Subtitle',
-        parent=styles['Normal'],
-        fontSize=12,
-        textColor= colors.HexColor('#4B5563'),
-        alignment=1,
-        spaceAfter=20
-    )
-
-    # Header with Logo
     try:
-        logo_path = "assets/logo.png"
-        if logo_path and os.path.exists(logo_path):
-            print("LOGO PATH EXISTS")
-            print(f"image dimensions: {Image.open(logo_path).size}")
-            logo = RLImage(logo_path, width=120, height=60)
-        else:
-            logging.error("Logo file not found!")
-            logo = None
-        header = Table(
-            [[logo, Paragraph("<b>RetinoNet Diagnostics</b><br/>"
-                            "Pimpri Chinchwad, MH 411044<br/>"
-                            "contact@retinonet.com<br/>"
-                            "retinonet.streamlit.app", styles['BodyText'])]],
-            colWidths=[150, 400]
+        print("INSIDE generate_pdf_report")
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
+        report_content = []
+        
+        # Custom Styles
+        title_style = styles['Title']
+        title_style.textColor = colors.HexColor('#1E40AF')
+        title_style.fontSize = 24
+        title_style.leading = 30
+
+        subtitle_style = ParagraphStyle(
+            'Subtitle',
+            parent=styles['Normal'],
+            fontSize=12,
+            textColor= colors.HexColor('#4B5563'),
+            alignment=1,
+            spaceAfter=20
         )
-        header.setStyle(TableStyle([
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('ALIGN', (0,0), (0,0), 'CENTER'),
-            ('LEFTPADDING', (1,0), (1,0), 20),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 15),
+
+        # Header with Logo
+        try:
+            logo_path = "assets/logo.png"
+            if logo_path and os.path.exists(logo_path):
+                print("LOGO PATH EXISTS")
+                try:
+                    logo_image = Image.open(logo_path)
+                    print(f"Logo image dimensions: {logo_image.size}")
+                    logo = RLImage(logo_path, width=120, height=60)
+                except Exception as logo_open_error:
+                    logging.error(f"Error opening logo image: {logo_open_error}")
+                    logo = None
+            else:
+                logging.error(f"Logo file not found at path: {logo_path}")
+                logo = None
+
+            header = Table(
+                [[logo, Paragraph("<b>RetinoNet Diagnostics</b><br/>"
+                                "Pimpri Chinchwad, MH 411044<br/>"
+                                "contact@retinonet.com<br/>"
+                                "retinonet.streamlit.app", styles['BodyText'])]],
+                colWidths=[150, 400]
+            )
+            header.setStyle(TableStyle([
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+                ('ALIGN', (0,0), (0,0), 'CENTER'),
+                ('LEFTPADDING', (1,0), (1,0), 20),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 15),
+            ]))
+            report_content.append(header)
+            report_content.append(HRFlowable(width="100%", thickness=1, 
+                                           color=colors.HexColor('#1E40AF')))
+        except Exception as header_error:
+            logging.error(f"Error creating header: {header_error}")
+            report_content.append(Paragraph("RetinoNet Diagnostics", title_style))
+        
+        # Title Section
+        report_content.append(Spacer(1, 15))
+        report_content.append(Paragraph("Diagnostic Report", title_style))
+        report_content.append(Paragraph("AI-Powered Retinal Analysis Report", subtitle_style))
+        
+        # Patient Info Section (Sample - can be expanded)
+        patient_info = [
+            ["Date of Analysis:", datetime.now().strftime("%Y-%m-%d")],
+            ["Analysis Type:", "Retinoblastoma Screening"]
+        ]
+        patient_table = Table(patient_info, colWidths=[120, 300])
+        patient_table.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica-Bold'),
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F3F4F6')),
+            ('TEXTCOLOR', (0,0), (-1,-1), colors.HexColor('#1F2937')),
+            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#E5E7EB')),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E5E7EB')),
         ]))
-        report_content.append(header)
-        report_content.append(HRFlowable(width="100%", thickness=1, 
-                                       color=colors.HexColor('#1E40AF')))
-    except Exception as e:
-        logging.error(f"Logo not found - using text header {e}")
-        report_content.append(Paragraph("RetinoNet Diagnostics", title_style))
-    
-    # Title Section
-    report_content.append(Spacer(1, 15))
-    report_content.append(Paragraph("Diagnostic Report", title_style))
-    report_content.append(Paragraph("AI-Powered Retinal Analysis Report", subtitle_style))
-    
-    # Patient Info Section (Sample - can be expanded)
-    patient_info = [
-        ["Date of Analysis:", datetime.now().strftime("%Y-%m-%d")],
-        ["Analysis Type:", "Retinoblastoma Screening"]
-    ]
-    patient_table = Table(patient_info, colWidths=[120, 300])
-    patient_table.setStyle(TableStyle([
-        ('FONTNAME', (0,0), (-1,-1), 'Helvetica-Bold'),
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F3F4F6')),
-        ('TEXTCOLOR', (0,0), (-1,-1), colors.HexColor('#1F2937')),
-        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#E5E7EB')),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E5E7EB')),
-    ]))
-    report_content.append(patient_table)
-    report_content.append(Spacer(1, 25))
+        report_content.append(patient_table)
+        report_content.append(Spacer(1, 25))
 
-    # Image Section
-    report_content.append(Paragraph("<b>Analyzed Image</b>", styles['Heading2']))
-    report_content.append(Spacer(1, 10))
-    img = RLImage(image_path, width=300, height=300, kind='proportional')
-    img.hAlign = 'CENTER'
-    report_content.append(img)
-    report_content.append(Spacer(1, 25))
-    report_content.append(Spacer(1, 25))
-    report_content.append(Spacer(1, 25))
+        # Image Section
+        try:
+            logging.info(f"Attempting to add image from path: {image_path}")
+            if not os.path.exists(image_path):
+                logging.error(f"Image file not found at path: {image_path}")
+                raise FileNotFoundError(f"Image file not found at {image_path}")
+            
+            img = RLImage(image_path, width=300, height=300, kind='proportional')
+            img.hAlign = 'CENTER'
+            report_content.append(Paragraph("<b>Analyzed Image</b>", styles['Heading2']))
+            report_content.append(Spacer(1, 10))
+            report_content.append(img)
+        except Exception as image_error:
+            logging.error(f"Error processing image: {image_error}")
+            report_content.append(Paragraph("Error: Unable to load image", styles['BodyText']))
+        
+        report_content.append(Spacer(1, 25))
+        report_content.append(Spacer(1, 25))
+        report_content.append(Spacer(1, 25))
 
-    # Results Section
-    report_content.append(Paragraph("<b>Diagnostic Findings</b>", styles['Heading2']))
-    
-    # Create confidence level color scale
-    prediction_data = []
-    for pred in predictions:
-        sorted_indices = np.argsort(pred)[::-1]
-        for idx in sorted_indices:
-            confidence = pred[idx]
-            class_name = CLASS_NAMES[idx]
-            color = colors.HexColor('#10B981') if confidence > 0.65 else \
-                    colors.HexColor('#F59E0B') if confidence > 0.3 else \
-                    colors.HexColor('#EF4444')
-            prediction_data.append([
-                Paragraph(class_name, styles['Normal']),
-                Paragraph(f"{confidence:.2%}", 
-                         ParagraphStyle('Confidence', textColor=color))
-            ])
+        # Results Section
+        report_content.append(Paragraph("<b>Diagnostic Findings</b>", styles['Heading2']))
+        
+        # Create confidence level color scale
+        try:
+            prediction_data = []
+            logging.info(f"Processing predictions: {predictions}")
+            
+            if not predictions or not isinstance(predictions, list):
+                logging.error("Invalid predictions format")
+                raise ValueError("Predictions must be a non-empty list")
+            
+            for pred in predictions:
+                sorted_indices = np.argsort(pred)[::-1]
+                for idx in sorted_indices:
+                    confidence = pred[idx]
+                    class_name = CLASS_NAMES[idx]
+                    color = colors.HexColor('#10B981') if confidence > 0.65 else \
+                            colors.HexColor('#F59E0B') if confidence > 0.3 else \
+                            colors.HexColor('#EF4444')
+                    prediction_data.append([
+                        Paragraph(class_name, styles['Normal']),
+                        Paragraph(f"{confidence:.2%}", 
+                                 ParagraphStyle('Confidence', textColor=color))
+                    ])
+            
+            # Create results table
+            results_table = Table(prediction_data, colWidths=[300, 100])
+            results_table.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1E40AF')),
+                ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0,0), (-1,0), 12),
+                ('BOTTOMPADDING', (0,0), (-1,0), 10),
+                ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E5E7EB')),
+            ]))
+            report_content.append(results_table)
+        except Exception as prediction_error:
+            logging.error(f"Error processing predictions: {prediction_error}")
+            report_content.append(Paragraph("Error: Unable to process diagnostic findings", styles['BodyText']))
+        
+        report_content.append(Spacer(1, 25))
 
-    # Create results table
-    results_table = Table(prediction_data, colWidths=[300, 100])
-    results_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1E40AF')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 12),
-        ('BOTTOMPADDING', (0,0), (-1,0), 10),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E5E7EB')),
-    ]))
-    report_content.append(results_table)
-    report_content.append(Spacer(1, 25))
+        # Recommendation Section
+        try:
+            recommendation = get_recommendation(predictions)
+            recommendation_style = ParagraphStyle(
+                'Recommendation',
+                parent=styles['BodyText'],
+                backColor=colors.HexColor('#DBEAFE'),
+                borderColor=colors.HexColor('#1E40AF'),
+                borderWidth=1,
+                borderPadding=(10, 5, 10, 5),
+                leftIndent=10,
+                fontSize=12,
+                leading=18
+            )
+            report_content.append(Paragraph("<b>Clinical Recommendation</b>", styles['Heading2']))
+            report_content.append(Spacer(1, 10))
+            report_content.append(Paragraph(recommendation, recommendation_style))
+        except Exception as recommendation_error:
+            logging.error(f"Error generating recommendation: {recommendation_error}")
+            report_content.append(Paragraph("Error: Unable to generate clinical recommendation", styles['BodyText']))
+        
+        report_content.append(Spacer(1, 25))
 
-    # Recommendation Section
-    recommendation = get_recommendation(predictions)
-    recommendation_style = ParagraphStyle(
-        'Recommendation',
-        parent=styles['BodyText'],
-        backColor=colors.HexColor('#DBEAFE'),
-        borderColor=colors.HexColor('#1E40AF'),
-        borderWidth=1,
-        borderPadding=(10, 5, 10, 5),
-        leftIndent=10,
-        fontSize=12,
-        leading=18
-    )
-    report_content.append(Paragraph("<b>Clinical Recommendation</b>", styles['Heading2']))
-    report_content.append(Spacer(1, 10))
-    report_content.append(Paragraph(recommendation, recommendation_style))
-    report_content.append(Spacer(1, 25))
+        # Footer Function
+        def add_footer(canvas, doc):
+            canvas.saveState()
+            footer_text = f"Page {doc.page} | Confidential Report - RetinoNet AI Diagnostics"
+            canvas.setFont('Helvetica', 8)
+            canvas.setFillColor(colors.HexColor('#6B7280'))
+            canvas.drawCentredString(letter[0]/2.0, 0.4*inch, footer_text)
+            canvas.restoreState()
 
-    # Footer Function
-    def add_footer(canvas, doc):
-        canvas.saveState()
-        footer_text = f"Page {doc.page} | Confidential Report - RetinoNet AI Diagnostics"
-        canvas.setFont('Helvetica', 8)
-        canvas.setFillColor(colors.HexColor('#6B7280'))
-        canvas.drawCentredString(letter[0]/2.0, 0.4*inch, footer_text)
-        canvas.restoreState()
+        # Build document with footer
+        try:
+            doc.build(report_content, onFirstPage=add_footer, onLaterPages=add_footer)
+        except Exception as build_error:
+            logging.error(f"Error building PDF: {build_error}")
+            # Optionally, you might want to raise the error or handle it differently
+            return None
 
-    # Build document with footer
-    try:
-        doc.build(report_content, onFirstPage=add_footer, onLaterPages=add_footer)
-    except Exception as e:
-        logging.error(f"Error building PDF: {e}")
-    buffer.seek(0)
-    return buffer
+        buffer.seek(0)
+        return buffer
+
+    except Exception as overall_error:
+        logging.error(f"Unexpected error in generate_pdf_report: {overall_error}")
+        # Optional: log the full traceback
+        logging.error(traceback.format_exc())
+        return None
 
 
 

@@ -60,7 +60,7 @@ async def analyze_image(file: UploadFile = File(...)):
         # Format response
         class_names = ["Bilateral Retinoblastoma", "Left Eye Retinoblastoma", "Right Eye Retinoblastoma", "Healthy"]
         results = {class_names[i]: f"{predictions[0][i]:.2%}" for i in range(len(class_names))}
-
+        print(results)
         return JSONResponse(content={"predictions": results})
 
     except Exception as e:
@@ -77,7 +77,6 @@ async def generate_report(file: UploadFile = File(...), predictions: str = Form(
         with open(image_path, "wb") as img_file:
             img_file.write(file.file.read())
         # Generate PDF
-        print("GENERATING PDF REPORT")
         pdf_buffer = generate_pdf_report(predictions, image_path)
         print("PDF REPORT GENERATED")
         # Cleanup
