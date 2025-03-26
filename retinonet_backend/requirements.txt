@@ -3,8 +3,8 @@ fastapi
 gdown
 mediapipe
 numpy
-opencv_contrib_python
-opencv_python
+opencv-contrib-python-headless
+opencv-python-headless
 Pillow
 python-dotenv
 reportlab
