@@ -55,7 +55,7 @@ def generate_pdf_report(predictions, image_path):
 
     # Header with Logo
     try:
-        logo_path = os.getenv("LOGO_PATH")
+        logo_path = os.getenv("assets/logo.png")
         if not logo_path or not os.path.exists(logo_path):
             raise FileNotFoundError("Logo not found")
         logo = RLImage(logo_path, width=120, height=60)
