@@ -63,7 +63,7 @@ const EmailForm = ({ file, predictions }: { file: File | null; predictions: any 
       <motion.div 
         whileHover={{ scale: 1.02 }}
         transition={{ type: "spring", stiffness: 400, damping: 10 }}
-        className="text-sm text-muted-foreground mb-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/30 p-4 rounded-lg border border-blue-100 dark:border-blue-900 shadow-sm"
+        className="text-sm bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-800/30 dark:to-indigo-800/20 p-4 rounded-lg border border-blue-100 dark:border-blue-700/50 shadow-sm text-slate-700 dark:text-slate-200"
       >
         <p className="font-medium text-blue-700 dark:text-blue-300 flex items-center">
           <Mail className="w-4 h-4 mr-2 opacity-70" />
@@ -75,7 +75,7 @@ const EmailForm = ({ file, predictions }: { file: File | null; predictions: any 
       </motion.div>
       
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-sm font-medium flex items-center gap-1.5">
+        <Label htmlFor="email" className="text-sm font-medium flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
           <AtSign className="h-3.5 w-3.5 text-blue-500" />
           Email Address
         </Label>

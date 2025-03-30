@@ -49,7 +49,7 @@ const Predictions: React.FC<PredictionsProps> = ({ predictions }) => {
   };
 
   return (
-    <div className="w-full relative overflow-hidden">
+    <div className="w-full relative overflow-hidden text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800">
       <motion.div 
         className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"
         animate={{
