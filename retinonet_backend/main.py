@@ -9,6 +9,7 @@ from email_service import send_email_report
 from PIL import Image
 import os
 import sys
+import logging
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
@@ -65,27 +66,67 @@ async def analyze_image(file: UploadFile = File(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @app.post("/generate_report/")
 async def generate_report(file: UploadFile = File(...), predictions: str = Form(...)):
     """Generate a PDF report for given predictions and image."""
     try:
-        predictions = np.array(eval(predictions))  # Convert string to NumPy array
-        image_path = f"temp_{file.filename}"
+        import json
+        import numpy as np
+
+        # Convert the received string to a proper Python object
+        parsed_predictions = json.loads(predictions)  
+
+        # Ensure predictions are in dictionary format
+        if isinstance(parsed_predictions, list):
+            CLASS_NAMES = [
+                "Bilateral Retinoblastoma", 
+                "Left Eye Retinoblastoma", 
+                "Right Eye Retinoblastoma", 
+                "Healthy"
+            ]
+            if len(parsed_predictions) != len(CLASS_NAMES):
+                raise ValueError("Number of predictions does not match expected class count.")
+
+            # Convert list to dictionary with class labels
+            logger.info(f"Converting into dict: {parsed_predictions}")
+            predictions_dict = {CLASS_NAMES[i]: parsed_predictions[i] for i in range(len(parsed_predictions))}
         
+        elif isinstance(parsed_predictions, dict):
+            logger.info(f"correct hai: {parsed_predictions}")
+            predictions_dict = parsed_predictions  # Already in correct format
+        
+        else:
+            raise ValueError("Predictions should be a list or dictionary.")
+
+        logging.info(f"Final Parsed Predictions: {predictions_dict}")
+
+        image_path = f"temp_{file.filename}"
+
         # Save temporary image
         with open(image_path, "wb") as img_file:
             img_file.write(file.file.read())
+
         # Generate PDF
-        pdf_buffer = generate_pdf_report(predictions, image_path)
-        print("PDF REPORT GENERATED")
+        pdf_buffer = generate_pdf_report(predictions_dict, image_path)
+
         # Cleanup
         os.remove(image_path)
 
-        return StreamingResponse(io.BytesIO(pdf_buffer.getvalue()), media_type="application/pdf",
-                                 headers={"Content-Disposition": "attachment; filename=RetinoNet_Report.pdf"})
+        return StreamingResponse(
+            io.BytesIO(pdf_buffer.getvalue()), 
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=RetinoNet_Report.pdf"}
+        )
+
     except Exception as e:
+        logging.error(f"Error generating report: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
 
 @app.post("/send_report/")
 async def send_report(email: str = Form(...), file: UploadFile = File(...), predictions: str = Form(...)):
