@@ -1,2 +1,2 @@
 [phases.setup]
-nixPkgs = ["opencv4", "libGL"]
+nixPkgs = ["python311", "opencv4", "libGL"]
