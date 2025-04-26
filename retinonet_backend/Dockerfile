@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6 \
     libxrender1 \
+    git-lfs \
+    && git lfs install \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -15,8 +17,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+
 # Copy the rest of the application
 COPY . .
+
+RUN git lfs pull
 
 # Make sure script is executable (explicitly set permissions)
 RUN chmod +x /app/start.sh
