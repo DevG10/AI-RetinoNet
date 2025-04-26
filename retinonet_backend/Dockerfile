@@ -19,8 +19,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
-RUN git lfs pull
-
 # Make sure script is executable (explicitly set permissions)
 RUN chmod +x /app/start.sh
 
