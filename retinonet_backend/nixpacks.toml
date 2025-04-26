@@ -1,0 +1,5 @@
+[phases.setup]
+nixPkgs = ["libGL", "glib", "libsm6", "libxext6", "libxrender"]
+
+[start]
+cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT"
