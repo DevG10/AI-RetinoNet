@@ -32,7 +32,7 @@ app.add_middleware(
 
 
 # Load ML Model on startup
-MODEL_PATH = "model/resnet_model.weights.h5"
+MODEL_PATH = "volume/appdata/resnet_model.weights.h5"
 model = load_model(MODEL_PATH)
 
 @app.get("/")
