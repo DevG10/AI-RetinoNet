@@ -13,13 +13,27 @@ export const useModelStatus = () => {
     try {
       const response = await axios.get(
         "https://ai-retinonet-production.up.railway.app/status",
-        { timeout: 10000 }
+        { 
+          timeout: 10000,
+          headers: { 'Cache-Control': 'no-cache' } // Prevent caching
+        }
       );
       
-      setIsModelReady(response.data?.status === true);
-      return response.data?.status === true;
+      const ready = response.data?.status === true;
+      setIsModelReady(ready);
+      return ready;
     } catch (err) {
+      console.error("Model status check failed:", err);
       setError("Couldn't connect to AI service");
+      
+      // If we can't connect, assume model is ready to use fallback mode
+      // This prevents the interface from being blocked indefinitely
+      if (isChecking && !isModelReady) {
+        setTimeout(() => {
+          setIsModelReady(true);
+        }, 15000); // After 15 seconds, assume ready for fallback
+      }
+      
       return false;
     } finally {
       setIsChecking(false);

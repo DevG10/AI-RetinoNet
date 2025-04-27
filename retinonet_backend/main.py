@@ -1,9 +1,9 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import io
 import numpy as np
-from models import load_model, predict
+from models import predict
 from report import generate_pdf_report, crop_to_retinal_area, is_printed_image
 from email_service import send_email_report
 from PIL import Image
@@ -11,32 +11,23 @@ import os
 import sys
 import logging
 from contextlib import asynccontextmanager
+from model_manager import ModelManager
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 # Global variables
 MODEL_PATH = "volume/appdata/resnet_model.weights.h5"
-model = None
-model_loaded = False
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Correct lifespan implementation for FastAPI
+# Initialize model manager
+model_manager = ModelManager(MODEL_PATH)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Load model
-    global model, model_loaded
-    logger.info("🚀 Starting up... Waiting for model to load.")
-    try:
-        if os.path.exists(MODEL_PATH):
-            model = load_model(MODEL_PATH)
-            model_loaded = True
-            logger.info("✅ Model loaded successfully!")
-        else:
-            logger.error(f"❌ Model file not found at {MODEL_PATH}")
-    except Exception as e:
-        logger.error(f"❌ Error loading model: {e}")
+    # Startup: Start loading the model in background
+    logger.info("🚀 Starting up... Beginning to load model in background.")
+    model_manager.load_model_in_background()
     
     yield  # This is where the app runs
     
@@ -68,15 +59,21 @@ def home():
 @app.get("/status")
 async def status():
     """Check if model is loaded."""
-    global model_loaded
-    logger.info(f"Status check: Model loaded = {model_loaded}")
-    return {"status": model_loaded}
+    is_loaded = model_manager.is_model_loaded()
+    logger.info(f"Status check: Model loaded = {is_loaded}")
+    return {"status": is_loaded}
 
 @app.post("/predict/")
-async def analyze_image(file: UploadFile = File(...)):
+async def analyze_image(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     """Endpoint to analyze retinal image and return predictions."""
-    if not model_loaded:
-        raise HTTPException(status_code=503, detail="Model not loaded yet. Please wait.")
+    # If model is not loaded, start loading in background and inform client
+    if not model_manager.is_model_loaded():
+        logger.warning("Model not loaded yet, starting background load")
+        background_tasks.add_task(model_manager.load_model_in_background)
+        raise HTTPException(
+            status_code=503, 
+            detail="Model not loaded yet. Started loading process, please try again in a moment."
+        )
     
     try:
         # Read Image
@@ -91,14 +88,20 @@ async def analyze_image(file: UploadFile = File(...)):
             img_io.seek(0)
             return StreamingResponse(img_io, media_type="image/jpeg")
         else:
+            # Get the model safely
+            model = model_manager.get_model()
+            if model is None:
+                raise HTTPException(status_code=500, detail="Failed to access model. Please try again.")
+                
             predictions = predict(model, image_array)
 
         class_names = ["Bilateral Retinoblastoma", "Left Eye Retinoblastoma", "Right Eye Retinoblastoma", "Healthy"]
         results = {class_names[i]: f"{predictions[0][i]:.2%}" for i in range(len(class_names))}
-        print(results)
+        logger.info(f"Prediction results: {results}")
         return JSONResponse(content={"predictions": results})
 
     except Exception as e:
+        logger.error(f"Error during prediction: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
