@@ -1,8 +1,11 @@
 import { useRef, useState, useCallback } from "react";
 import Webcam from "react-webcam";
 import { Button } from "@/components/ui/button";
-import { Camera, Upload, Loader2 } from "lucide-react";
+import { Camera, Upload, Loader2, AlertCircle } from "lucide-react";
 import axios from "axios";
+import { toast } from "sonner";
+import { useModelStatus } from "@/hooks/useModelStatus";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface LiveCaptureProps {
   setPredictions: (predictions: Record<string, string>) => void;
@@ -14,6 +17,7 @@ const LiveCapture = ({ setPredictions, setFile }: LiveCaptureProps) => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { isModelReady, isChecking } = useModelStatus();
 
   // Capture image from webcam
   const capture = useCallback(() => {
@@ -27,6 +31,14 @@ const LiveCapture = ({ setPredictions, setFile }: LiveCaptureProps) => {
   // Send live image to backend for cropping
   const handleLivePrediction = async () => {
     if (!capturedImage) return;
+    
+    // Check if model is ready
+    if (!isModelReady) {
+      toast.error("AI model is still loading. Please wait a few moments.", {
+        icon: <AlertCircle className="h-4 w-4 text-yellow-500" />,
+      });
+      return;
+    }
 
     setLoading(true);
 
@@ -62,8 +74,15 @@ const LiveCapture = ({ setPredictions, setFile }: LiveCaptureProps) => {
       };
 
       setPredictions(fakePredictions);
+      
+      toast.success("Retina scan processed successfully!", {
+        duration: 3000,
+      });
     } catch (error) {
       console.error("Error processing image:", error);
+      toast.error("Error processing image. Please try again.", {
+        duration: 3000,
+      });
     } finally {
       setLoading(false);
     }
@@ -71,6 +90,23 @@ const LiveCapture = ({ setPredictions, setFile }: LiveCaptureProps) => {
 
   return (
     <div className="flex flex-col items-center gap-6">
+      {/* Model loading status */}
+      <AnimatePresence>
+        {!isModelReady && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-3 w-full max-w-lg dark:bg-amber-900/20 dark:border-amber-800"
+          >
+            <Loader2 className="h-5 w-5 text-amber-500 animate-spin" />
+            <p className="text-amber-800 dark:text-amber-300 text-sm">
+              AI model is warming up. Real-time analysis will be available shortly...
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="w-full max-w-lg mx-auto relative">
         {!capturedImage ? (
           <div className="relative rounded-xl overflow-hidden border-4 border-blue-200 dark:border-blue-800 shadow-xl">
@@ -118,11 +154,15 @@ const LiveCapture = ({ setPredictions, setFile }: LiveCaptureProps) => {
             <Button 
               onClick={handleLivePrediction} 
               className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-blue-500/20 rounded-full px-6 py-3" 
-              disabled={loading}
+              disabled={loading || !isModelReady}
             >
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" /> Processing...
+                </>
+              ) : !isModelReady ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" /> Model Loading...
                 </>
               ) : (
                 <>
@@ -133,6 +173,13 @@ const LiveCapture = ({ setPredictions, setFile }: LiveCaptureProps) => {
           </>
         )}
       </div>
+      
+      {/* Status message */}
+      {!isModelReady && !capturedImage && (
+        <p className="text-xs text-blue-600 dark:text-blue-400 text-center">
+          {isChecking ? "Checking AI model status..." : "AI model is initializing. Please wait..."}
+        </p>
+      )}
     </div>
   );
 };

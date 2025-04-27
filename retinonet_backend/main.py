@@ -10,13 +10,44 @@ from PIL import Image
 import os
 import sys
 import logging
+from contextlib import asynccontextmanager
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-app = FastAPI()
+# Global variables
+MODEL_PATH = "retinonet_backend/model/resnet_model.weights.h5"
+model = None
+model_loaded = False
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Correct lifespan implementation for FastAPI
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Load model
+    global model, model_loaded
+    logger.info("🚀 Starting up... Waiting for model to load.")
+    try:
+        if os.path.exists(MODEL_PATH):
+            model = load_model(MODEL_PATH)
+            model_loaded = True
+            logger.info("✅ Model loaded successfully!")
+        else:
+            logger.error(f"❌ Model file not found at {MODEL_PATH}")
+    except Exception as e:
+        logger.error(f"❌ Error loading model: {e}")
+    
+    yield  # This is where the app runs
+    
+    # Shutdown: Clean up resources if needed
+    logger.info("Shutting down...")
+
+# Create FastAPI app with the lifespan
+app = FastAPI(lifespan=lifespan)
 
 origins = [
-    "http://localhost:5173",  # Your React frontend URL (Vite default)
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://ai-retinonet-production.up.railway.app",
     "https://retinonet-frontend-9dajyumbo-dev-govindanis-projects.vercel.app"
@@ -24,24 +55,29 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, PUT, DELETE, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-
-
-# Load ML Model on startup
-MODEL_PATH = "volume/appdata/resnet_model.weights.h5"
-model = load_model(MODEL_PATH)
 
 @app.get("/")
 def home():
     return {"message": "RetinoNet API is running"}
 
+@app.get("/status")
+async def status():
+    """Check if model is loaded."""
+    global model_loaded
+    logger.info(f"Status check: Model loaded = {model_loaded}")
+    return {"status": model_loaded}
+
 @app.post("/predict/")
 async def analyze_image(file: UploadFile = File(...)):
     """Endpoint to analyze retinal image and return predictions."""
+    if not model_loaded:
+        raise HTTPException(status_code=503, detail="Model not loaded yet. Please wait.")
+    
     try:
         # Read Image
         image = Image.open(file.file).convert("RGB")
@@ -49,8 +85,7 @@ async def analyze_image(file: UploadFile = File(...)):
         image_array = np.array(cropped_image) / 255.0
         image_array = np.expand_dims(image_array, axis=0)
 
-        # Handle live-captured images: Return cropped image instead of predictions
-        if "live_captured_image" in file.filename:  # Detect live capture based on filename
+        if "live_captured_image" in file.filename:
             img_io = io.BytesIO()
             cropped_image.save(img_io, format="JPEG")
             img_io.seek(0)
@@ -58,7 +93,6 @@ async def analyze_image(file: UploadFile = File(...)):
         else:
             predictions = predict(model, image_array)
 
-        # Format response
         class_names = ["Bilateral Retinoblastoma", "Left Eye Retinoblastoma", "Right Eye Retinoblastoma", "Healthy"]
         results = {class_names[i]: f"{predictions[0][i]:.2%}" for i in range(len(class_names))}
         print(results)
@@ -66,9 +100,7 @@ async def analyze_image(file: UploadFile = File(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
 
 @app.post("/generate_report/")
 async def generate_report(file: UploadFile = File(...), predictions: str = Form(...)):
@@ -77,47 +109,31 @@ async def generate_report(file: UploadFile = File(...), predictions: str = Form(
         import json
         import numpy as np
 
-        # Convert the received string to a proper Python object
         parsed_predictions = json.loads(predictions)  
 
-        # Ensure predictions are in dictionary format
         if isinstance(parsed_predictions, list):
-            CLASS_NAMES = [
-                "Bilateral Retinoblastoma", 
-                "Left Eye Retinoblastoma", 
-                "Right Eye Retinoblastoma", 
-                "Healthy"
-            ]
+            CLASS_NAMES = ["Bilateral Retinoblastoma", "Left Eye Retinoblastoma", "Right Eye Retinoblastoma", "Healthy"]
             if len(parsed_predictions) != len(CLASS_NAMES):
                 raise ValueError("Number of predictions does not match expected class count.")
-
-            # Convert list to dictionary with class labels
-            logger.info(f"Converting into dict: {parsed_predictions}")
-            predictions_dict = {CLASS_NAMES[i]: parsed_predictions[i] for i in range(len(parsed_predictions))}
+            predictions_dict = {CLASS_NAMES[i]: parsed_predictions[i] for i in range(len(CLASS_NAMES))}
         
         elif isinstance(parsed_predictions, dict):
-            logger.info(f"correct hai: {parsed_predictions}")
-            predictions_dict = parsed_predictions  # Already in correct format
+            predictions_dict = parsed_predictions  
         
         else:
             raise ValueError("Predictions should be a list or dictionary.")
 
-        logging.info(f"Final Parsed Predictions: {predictions_dict}")
-
         image_path = f"temp_{file.filename}"
 
-        # Save temporary image
         with open(image_path, "wb") as img_file:
             img_file.write(file.file.read())
 
-        # Generate PDF
         pdf_buffer = generate_pdf_report(predictions_dict, image_path)
 
-        # Cleanup
         os.remove(image_path)
 
         return StreamingResponse(
-            io.BytesIO(pdf_buffer.getvalue()), 
+            io.BytesIO(pdf_buffer.getvalue()),
             media_type="application/pdf",
             headers={"Content-Disposition": "attachment; filename=RetinoNet_Report.pdf"}
         )
@@ -127,7 +143,6 @@ async def generate_report(file: UploadFile = File(...), predictions: str = Form(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 @app.post("/send_report/")
 async def send_report(email: str = Form(...), file: UploadFile = File(...), predictions: str = Form(...)):
     """Send an email with the diagnostic report."""
@@ -135,17 +150,13 @@ async def send_report(email: str = Form(...), file: UploadFile = File(...), pred
         predictions = np.array(eval(predictions))
         image_path = f"temp_{file.filename}"
 
-        # Save temporary image
         with open(image_path, "wb") as img_file:
             img_file.write(file.file.read())
 
-        # Generate PDF report
         pdf_buffer = generate_pdf_report(predictions, image_path)
 
-        # Send Email
         success = send_email_report(email, pdf_buffer, image_path)
 
-        # Cleanup
         os.remove(image_path)
 
         if success:
