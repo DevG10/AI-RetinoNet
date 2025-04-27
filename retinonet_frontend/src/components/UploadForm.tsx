@@ -99,7 +99,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ setPredictions, setFile }) => {
       
       const progressInterval = simulateProgress();
 
-      const response = await axios.post("https://ai-retinonet.onrender.com/predict/", formData, {
+      const response = await axios.post("https://ai-retinonet-production.up.railway.app/predict/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
         timeout: 30000, // 30 second timeout
       });

@@ -40,7 +40,7 @@ const LiveCapture = ({ setPredictions, setFile }: LiveCaptureProps) => {
       formData.append("file", file);
 
       // Send image to backend for cropping
-      const response = await axios.post("https://ai-retinonet.onrender.com/predict/", formData, {
+      const response = await axios.post("https://ai-retinonet-production.up.railway.app/predict/", formData, {
         responseType: "blob", // Expecting an image as response
       });
 

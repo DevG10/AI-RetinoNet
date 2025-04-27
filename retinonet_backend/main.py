@@ -18,7 +18,7 @@ app = FastAPI()
 origins = [
     "http://localhost:5173",  # Your React frontend URL (Vite default)
     "http://127.0.0.1:5173",
-    "https://ai-retinonet.onrender.com",
+    "https://ai-retinonet-production.up.railway.app",
     "https://retinonet-frontend-9dajyumbo-dev-govindanis-projects.vercel.app"
 ]
 
