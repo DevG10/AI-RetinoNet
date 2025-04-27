@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 # Global variables
-MODEL_PATH = "retinonet_backend/model/resnet_model.weights.h5"
+MODEL_PATH = "volume/appdata/resnet_model.weights.h5"
 model = None
 model_loaded = False
 
