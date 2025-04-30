@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Camera, Upload, Loader2, ArrowRight, Sparkles, RefreshCw, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { uploadImage } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import axios from "axios";
