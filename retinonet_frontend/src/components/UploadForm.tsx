@@ -9,12 +9,9 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
-  ServerIcon,
-  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { useModelStatus } from "@/hooks/useModelStatus";
 
 interface UploadFormProps {
   setPredictions: (predictions: Record<string, string>) => void;
@@ -28,9 +25,6 @@ const UploadForm: React.FC<UploadFormProps> = ({ setPredictions, setFile }) => {
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [errorDetails, setErrorDetails] = useState<string | null>(null);
-  const { isModelReady, isChecking, error: modelError, checkModelStatus } = useModelStatus();
 
   const handleFile = useCallback((file: File) => {
     // Validate file is an image
@@ -86,16 +80,28 @@ const UploadForm: React.FC<UploadFormProps> = ({ setPredictions, setFile }) => {
 
   const handleUpload = async () => {
     if (!selectedFile) return;
-    
-    // Even if frontend thinks model is ready, backend might have spun down
-    // We'll try anyway and handle the 503 response appropriately
     setLoading(true);
     setUploadProgress(0);
     setError(null);
-    setErrorDetails(null);
 
     try {
-      // Upload starts
+      // Step 1: Check if model is ready
+      // const healthResponse = await axios.get(
+      //   "https://ai-retinonet-production.up.railway.app/status",
+      //   {
+      //     timeout: 10000, // 10 second timeout
+      //   }
+      // );
+
+      // if (healthResponse.data?.status !== true) {
+      //   toast.error("Model is still loading. Please wait a few seconds.", {
+      //     icon: <AlertCircle className="h-4 w-4 text-yellow-500" />,
+      //   });
+      //   setLoading(false);
+      //   return;
+      // }
+
+      // Step 2: Upload starts
       const formData = new FormData();
       formData.append("file", selectedFile);
 
@@ -116,126 +122,35 @@ const UploadForm: React.FC<UploadFormProps> = ({ setPredictions, setFile }) => {
 
       const progressInterval = simulateProgress();
 
-      try {
-        const response = await axios.post(
-          "https://ai-retinonet-production.up.railway.app/predict/",
-          formData,
-          {
-            headers: { 
-              "Content-Type": "multipart/form-data",
-              "Accept": "application/json" 
-            },
-            timeout: 30000,
-          }
-        );
-
-        clearInterval(progressInterval);
-        setUploadProgress(100);
-
-        // Check if response has the expected format
-        if (response.data && response.data.predictions) {
-          setPredictions(response.data.predictions);
-          setFile(selectedFile);
-
-          toast.success("Retina scan analyzed successfully!", {
-            icon: <CheckCircle className="h-4 w-4 text-green-500" />,
-          });
-        } else {
-          // If response format is unexpected, use fallback predictions
-          console.warn("Unexpected response format:", response.data);
-          useFallbackPredictions();
+      const response = await axios.post(
+        "https://58e4-52-210-233-217.ngrok-free.app/predict/",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+          timeout: 30000,
         }
-      } catch (apiError: any) {
-        console.error("API error:", apiError);
-        
-        // Handle 503 - model not yet loaded
-        if (apiError.response && apiError.response.status === 503) {
-          clearInterval(progressInterval);
-          
-          // The model is loading - inform user and start polling for status
-          toast.info("AI model is warming up. This may take a minute...", {
-            duration: 5000,
-          });
-          
-          // Wait and then poll status endpoint
-          setTimeout(async () => {
-            try {
-              const status = await checkModelStatus();
-              if (status) {
-                toast.success("Model is ready now! Try again.", {
-                  duration: 3000,
-                });
-              } else {
-                // If still not ready, use fallback
-                useFallbackPredictions();
-              }
-            } catch (e) {
-              useFallbackPredictions();
-            } finally {
-              setLoading(false);
-            }
-          }, 15000); // Wait 15 seconds before checking
-          
-          return;
-        }
-        
-        // For other errors, try retry or fallback
-        if (retryCount < 2) {
-          setRetryCount(prevCount => prevCount + 1);
-          clearInterval(progressInterval);
-          
-          toast.warning("Connection issue. Retrying...", {
-            duration: 3000,
-            icon: <RefreshCw className="h-4 w-4 animate-spin" />
-          });
-          
-          // Retry after a short delay
-          setTimeout(() => handleUpload(), 2000);
-          return;
-        }
-        
-        // If we've already retried, use fallback
-        clearInterval(progressInterval);
-        useFallbackPredictions();
-      }
+      );
 
-    } catch (error: any) {
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      setPredictions(response.data.predictions);
+      setFile(selectedFile);
+
+      toast.success("Retina scan analyzed successfully!", {
+        icon: <CheckCircle className="h-4 w-4 text-green-500" />,
+      });
+    } catch (error) {
       console.error("Error uploading file:", error);
       setError("Unable to process your retina scan. Please try again.");
-      setErrorDetails(error.message || "Unknown error occurred");
       toast.error("Error analyzing retina scan.", {
         icon: <AlertCircle className="h-4 w-4 text-red-500" />,
       });
-      useFallbackPredictions();
     } finally {
       setTimeout(() => {
         setLoading(false);
-        setRetryCount(0); // Reset retry count
       }, 500);
     }
-  };
-  
-  // Fallback function to generate predictions when API fails
-  const useFallbackPredictions = () => {
-    console.log("Using fallback predictions");
-    // Generate believable predictions (weighted toward healthy for demo)
-    const healthyWeight = Math.random() * 0.3 + 0.6; // Between 60-90%
-    const otherWeights = (1 - healthyWeight) / 3; // Divide remaining probability
-    
-    const fakePredictions = {
-      "Bilateral Retinoblastoma": `${(otherWeights * 100).toFixed(2)}%`,
-      "Left Eye Retinoblastoma": `${(otherWeights * 100).toFixed(2)}%`,
-      "Right Eye Retinoblastoma": `${(otherWeights * 100).toFixed(2)}%`,
-      "Healthy": `${(healthyWeight * 100).toFixed(2)}%`
-    };
-    
-    setPredictions(fakePredictions);
-    setFile(selectedFile);
-    
-    toast.success("Retina scan analyzed with fallback mode.", {
-      icon: <CheckCircle className="h-4 w-4 text-blue-500" />,
-      description: "Some features may be limited."
-    });
   };
 
   return (
@@ -245,32 +160,6 @@ const UploadForm: React.FC<UploadFormProps> = ({ setPredictions, setFile }) => {
       transition={{ duration: 0.5 }}
       className="w-full space-y-6"
     >
-      {/* Model status indicator */}
-      <AnimatePresence>
-        {!isModelReady && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-3 dark:bg-amber-900/20 dark:border-amber-800"
-          >
-            {isChecking ? (
-              <Loader2 className="h-5 w-5 text-amber-500 animate-spin" />
-            ) : (
-              <ServerIcon className="h-5 w-5 text-amber-500" />
-            )}
-            <div className="flex-1">
-              <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">
-                {modelError ? modelError : "AI model is warming up..."}
-              </p>
-              <p className="text-amber-600 dark:text-amber-400 text-xs">
-                Please wait a moment before analyzing images
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <motion.div
         className="text-center space-y-3"
         initial={{ y: -20, opacity: 0 }}
@@ -482,10 +371,10 @@ const UploadForm: React.FC<UploadFormProps> = ({ setPredictions, setFile }) => {
       <div className="flex justify-center pt-2">
         <Button
           onClick={handleUpload}
-          disabled={!selectedFile || loading || (!isModelReady && retryCount === 0)}
+          disabled={!selectedFile || loading}
           size="lg"
           className={`gap-2 relative overflow-hidden ${
-            !selectedFile || (!isModelReady && retryCount === 0)
+            !selectedFile
               ? "bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed"
               : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
           } transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-teal-500/20 rounded-full px-10 py-7 font-medium text-white`}
@@ -493,9 +382,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ setPredictions, setFile }) => {
           {loading ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="relative z-10">
-                {retryCount > 0 ? `Retrying (${retryCount}/2)...` : "Analyzing..."}
-              </span>
+              <span className="relative z-10">Analyzing...</span>
 
               {/* Loading background animation */}
               <motion.div
@@ -510,11 +397,6 @@ const UploadForm: React.FC<UploadFormProps> = ({ setPredictions, setFile }) => {
                   ease: "linear",
                 }}
               />
-            </>
-          ) : !isModelReady && isChecking ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="relative z-10">Model Loading...</span>
             </>
           ) : (
             <>
@@ -541,20 +423,8 @@ const UploadForm: React.FC<UploadFormProps> = ({ setPredictions, setFile }) => {
           transition={{ delay: 1, duration: 0.5 }}
           className="text-center text-xs text-slate-500 dark:text-slate-400 mt-2"
         >
-          {isModelReady 
-            ? "Our AI works best with clear, focused retina images" 
-            : "AI model is initializing. Please wait a moment before analyzing images"}
+          Our AI works best with clear, focused retina images
         </motion.p>
-      )}
-
-      {/* Error details (debugging) */}
-      {errorDetails && (
-        <div className="text-xs bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 mt-2">
-          <details>
-            <summary className="cursor-pointer font-medium">Error details (click to expand)</summary>
-            <p className="mt-1 whitespace-pre-wrap">{errorDetails}</p>
-          </details>
-        </div>
       )}
     </motion.div>
   );

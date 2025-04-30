@@ -12,7 +12,7 @@ export const useModelStatus = () => {
     
     try {
       const response = await axios.get(
-        "https://ai-retinonet-production.up.railway.app/status",
+        "https://58e4-52-210-233-217.ngrok-free.app/status",
         { 
           timeout: 10000,
           headers: { 'Cache-Control': 'no-cache' } // Prevent caching

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "https://ai-retinonet-production.up.railway.app"; // Change if backend is hosted
+const API_BASE_URL = "https://58-52-210-233-217.ngrok-free.app"; // Change if backend is hosted
 
 export const uploadImage = async (file: File) => {
   const formData = new FormData();

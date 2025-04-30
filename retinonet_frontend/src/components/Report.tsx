@@ -21,7 +21,7 @@ const Report = ({ file, predictions }: { file: File | null; predictions: any }) 
     formData.append("predictions", JSON.stringify(Object.values(predictions)));
 
     try {
-      const response = await fetch("https://ai-retinonet-production.up.railway.app/generate_report/", {
+      const response = await fetch("https://58e4-52-210-233-217.ngrok-free.app/generate_report/", {
         method: "POST",
         body: formData,
       });
