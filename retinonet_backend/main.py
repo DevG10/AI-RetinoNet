@@ -42,7 +42,7 @@ origins = [
     "http://127.0.0.1:5173",
     "https://ai-retinonet-production.up.railway.app",
     "https://retinonet-frontend-9dajyumbo-dev-govindanis-projects.vercel.app",
-    "https://58e4-52-210-233-217.ngrok-free.app"
+    "https://4f64-52-210-233-217.ngrok-free.app"
 ]
 
 app.add_middleware(

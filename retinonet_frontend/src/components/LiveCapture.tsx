@@ -100,7 +100,7 @@ const LiveCapture = ({ setPredictions, setFile }: LiveCaptureProps) => {
         formData.append("file", file);
 
         const response = await axios.post(
-          "https://58e4-52-210-233-217.ngrok-free.app/predict/",
+          "https://4f64-52-210-233-217.ngrok-free.app/predict/",
           formData, 
           {
             responseType: 'blob', // This ensures we get the image back as a blob

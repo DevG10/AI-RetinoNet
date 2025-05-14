@@ -181,7 +181,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ setPredictions, setFile }) => {
         formData.append("file", selectedFile);
 
         const response = await axios.post(
-          "https://58e4-52-210-233-217.ngrok-free.app/predict/",
+          "https://4f64-52-210-233-217.ngrok-free.app/predict/",
           formData,
           {
             headers: { "Content-Type": "multipart/form-data" },

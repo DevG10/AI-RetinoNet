@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create a configurable API base URL for different environments
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  "https://58e4-52-210-233-217.ngrok-free.app";
+  "https://4f64-52-210-233-217.ngrok-free.app";
 
 // Create an axios instance with default config
 const apiClient = axios.create({
